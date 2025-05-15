@@ -1,7 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-- use for guidance and projektplan the PRD in the main folder `prd.md`
-- use for the design guidance the mockup file in the main folder `main.png`
