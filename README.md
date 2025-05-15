@@ -1,66 +1,66 @@
 # PDF-Creator
 
-Eine Webanwendung zum Erstellen, Bearbeiten und Exportieren von PDF-Dokumenten mit einem benutzerfreundlichen Rich-Text-Editor.
+A web application for creating, editing, and exporting PDF documents with a user-friendly rich text editor.
 
-## Funktionen
+## Features
 
-- Rich-Text-Editor zum Erstellen und Formatieren von Dokumenten
-- Echtzeit-Vorschau des PDF-Dokuments
-- Export in verschiedene Formate
-- Benutzerfreundliche Oberfläche
-- Responsive Design für verschiedene Geräte
+- Rich text editor for creating and formatting documents
+- Real-time preview of the PDF document
+- Export to various formats
+- User-friendly interface
+- Responsive design for different devices
 
-## Technologien
+## Technologies
 
 - **Frontend**: React.js, Vite
 - **Backend**: Node.js, Express
-- **PDF-Verarbeitung**: Verschiedene PDF-Bibliotheken
+- **PDF Processing**: Various PDF libraries
 
 ## Installation
 
-### Voraussetzungen
+### Prerequisites
 
-- Node.js (v14 oder höher)
-- npm oder yarn
+- Node.js (v14 or higher)
+- npm or yarn
 
-### Schritte
+### Steps
 
-1. Repository klonen:
+1. Clone the repository:
 
    ```
    git clone https://github.com/maboeh/PDF-Creator.git
    cd PDF-Creator
    ```
 
-2. Abhängigkeiten installieren:
+2. Install dependencies:
 
    ```
-   # Hauptprojekt-Abhängigkeiten
+   # Main project dependencies
    npm install
 
-   # Client-Abhängigkeiten
+   # Client dependencies
    cd client
    npm install
 
-   # Server-Abhängigkeiten (falls separat)
+   # Server dependencies (if separate)
    cd ../server
    npm install
    ```
 
-3. Anwendung starten:
+3. Start the application:
    ```
-   # Entwicklungsserver starten
+   # Start development server
    npm run dev
    ```
 
-## Verwendung
+## Usage
 
-Nach dem Start ist die Anwendung unter `http://localhost:5173` (oder dem in der Konsole angegebenen Port) verfügbar.
+After starting, the application is available at `http://localhost:5173` (or the port indicated in the console).
 
-## Mitwirken
+## Contributing
 
-Beiträge zum Projekt sind willkommen! Bitte erstelle einen Fork des Repositories und reiche einen Pull Request ein.
+Contributions to the project are welcome! Please create a fork of the repository and submit a pull request.
 
-## Lizenz
+## License
 
 [MIT](LICENSE)
