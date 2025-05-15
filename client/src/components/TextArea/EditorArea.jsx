@@ -12,7 +12,7 @@ const EditorArea = ({ content, handleContentChange }) => {
               className="card-header"
               style={{ backgroundColor: "#F5F5F5", color: "#333333" }}
             >
-              Texteditor
+              Text Editor
             </div>
             <div className="card-body p-0">
               <RichTextEditor

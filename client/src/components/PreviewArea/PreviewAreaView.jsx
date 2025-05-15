@@ -15,7 +15,7 @@ const PreviewAreaView = ({ content }) => {
             borderTop: "1px solid #dee2e6",
           }}
         >
-          Echtzeit-Vorschau
+          Real-time Preview
         </div>
         <div
           className="card-body"

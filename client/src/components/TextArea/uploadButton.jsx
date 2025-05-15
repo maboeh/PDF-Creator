@@ -9,7 +9,7 @@ const UploadButton = () => {
         color: "#FFFFFF",
       }}
     >
-      Text uploaden
+      Upload Text
     </button>
   )
 }

@@ -8,7 +8,7 @@ const Navigation = () => {
             PDF Creator
           </span>
           <span className="navbar-text" style={{ color: "#333333" }}>
-            Text zu PDF Konverter
+            Text to PDF Converter
           </span>
         </div>
       </nav>

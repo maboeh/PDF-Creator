@@ -126,7 +126,7 @@ const MenuBar = () => {
         </button>
         <button
           onClick={() => {
-            const url = window.prompt("URL des Bildes eingeben:")
+            const url = window.prompt("Enter image URL:")
             if (url) {
               editor.chain().focus().setImage({ src: url }).run()
             }
@@ -153,7 +153,7 @@ const MenuBar = () => {
               .run()
           }
         >
-          Tabelle
+          Table
         </button>
         <div className="dropdown">
           <button
@@ -161,7 +161,7 @@ const MenuBar = () => {
             data-bs-toggle="dropdown"
             type="button"
           >
-            Tabellenfunktionen
+            Table Functions
           </button>
           <ul className="dropdown-menu">
             <li>
@@ -264,7 +264,7 @@ const MenuBar = () => {
                   editor.chain().focus().setCellAttribute("colspan", 2).run()
                 }
               >
-                Zellattribut setzen
+                Set Cell Attribute
               </a>
             </li>
             <li>
@@ -273,7 +273,7 @@ const MenuBar = () => {
                 href="#"
                 onClick={() => editor.chain().focus().fixTables().run()}
               >
-                Tabellen reparieren
+                Fix Tables
               </a>
             </li>
             <li>
@@ -282,7 +282,7 @@ const MenuBar = () => {
                 href="#"
                 onClick={() => editor.chain().focus().goToNextCell().run()}
               >
-                Zur nächsten Zelle
+                Go to Next Cell
               </a>
             </li>
             <li>
@@ -291,7 +291,7 @@ const MenuBar = () => {
                 href="#"
                 onClick={() => editor.chain().focus().goToPreviousCell().run()}
               >
-                Zur vorherigen Zelle
+                Go to Previous Cell
               </a>
             </li>
           </ul>

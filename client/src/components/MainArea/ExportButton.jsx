@@ -10,7 +10,7 @@ const ExportButton = ({ content }) => {
       const opts = {
         types: [
           {
-            description: "PDF Datei",
+            description: "PDF File",
             accept: {
               "application/pdf": [".pdf"],
             },
@@ -30,7 +30,7 @@ const ExportButton = ({ content }) => {
       })
 
       if (!response.ok) {
-        throw new Error("Fehler beim Exportieren des PDFs")
+        throw new Error("Error exporting PDF")
       }
 
       const pdfBlob = await response.blob()
@@ -39,7 +39,7 @@ const ExportButton = ({ content }) => {
       await writable.write(pdfBlob)
       await writable.close()
     } catch (error) {
-      console.error("Fehler beim Exportieren des PDFs:", error)
+      console.error("Error exporting PDF:", error)
     } finally {
       setIsLoading(false)
     }
@@ -55,7 +55,7 @@ const ExportButton = ({ content }) => {
       disabled={isLoading}
       onClick={handleExport}
     >
-      {isLoading ? "Wird exportiert..." : "PDF exportieren"}
+      {isLoading ? "Exporting..." : "Export PDF"}
     </button>
   )
 }

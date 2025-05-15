@@ -4,21 +4,21 @@ const puppeteer = require("puppeteer")
 
 router.post("/export-pdf", async (req, res) => {
   try {
-    // HTML-Inhalt aus der Anfrage extrahieren
+    // Extract HTML content from the request
     const { htmlContent } = req.body
 
     if (!htmlContent) {
-      return res.status(400).json({ error: "Kein HTML-Inhalt vorhanden" })
+      return res.status(400).json({ error: "No HTML content provided" })
     }
 
-    // Browser mit Puppeteer starten
+    // Start browser with Puppeteer
     const browser = await puppeteer.launch({ headless: "new" })
     const page = await browser.newPage()
 
-    // HTML-Inhalt in die Seite laden
+    // Load HTML content to the page
     await page.setContent(htmlContent, { waitUntil: "networkidle0" })
 
-    // PDF generieren
+    // Generate PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -32,13 +32,13 @@ router.post("/export-pdf", async (req, res) => {
 
     await browser.close()
 
-    // PDF zum Download senden
+    // Send PDF for download
     res.contentType("application/pdf")
-    res.setHeader("Content-Disposition", "attachment; filename=dokument.pdf")
+    res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
     res.send(pdfBuffer)
   } catch (error) {
-    console.error("Fehler bei der PDF-Erstellung:", error)
-    res.status(500).json({ error: "Fehler bei der PDF-Erstellung" })
+    console.error("Error creating PDF:", error)
+    res.status(500).json({ error: "Error creating PDF" })
   }
 })
 
