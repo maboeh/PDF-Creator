@@ -1,0 +1,4 @@
+/* Versteckt Scrollbalken in WebKit-Browsern (Chrome, Safari) */
+.card-body::-webkit-scrollbar {
+  display: none;
+}
