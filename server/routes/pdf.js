@@ -11,14 +11,49 @@ router.post("/export-pdf", async (req, res) => {
       return res.status(400).json({ error: "No HTML content provided" })
     }
 
+    // Debug: Log table presence
+    console.log(
+      "Received HTML content includes table:",
+      htmlContent.includes("<table")
+    )
+
     // Start browser with Puppeteer
-    const browser = await puppeteer.launch({ headless: "new" })
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
     const page = await browser.newPage()
 
-    // Load HTML content to the page
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" })
+    // Set content with more waiting options
+    await page.setContent(htmlContent, {
+      waitUntil: ["domcontentloaded", "networkidle0"],
+      timeout: 30000,
+    })
 
-    // Generate PDF
+    // Additional styling injection to ensure tables are visible
+    await page.addStyleTag({
+      content: `
+        table { 
+          border-collapse: collapse; 
+          width: 100%; 
+          margin-bottom: 20px;
+          border: 2px solid black !important;
+        }
+        th, td { 
+          border: 1px solid black !important; 
+          padding: 8px; 
+          text-align: left;
+        }
+        th { 
+          background-color: #f2f2f2; 
+        }
+      `,
+    })
+
+    // Wait to ensure rendering is complete
+    await page.waitForTimeout(1000)
+
+    // Generate PDF with more options
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -28,6 +63,8 @@ router.post("/export-pdf", async (req, res) => {
         bottom: "20mm",
         left: "20mm",
       },
+      preferCSSPageSize: false,
+      displayHeaderFooter: false,
     })
 
     await browser.close()
@@ -38,7 +75,9 @@ router.post("/export-pdf", async (req, res) => {
     res.send(pdfBuffer)
   } catch (error) {
     console.error("Error creating PDF:", error)
-    res.status(500).json({ error: "Error creating PDF" })
+    res
+      .status(500)
+      .json({ error: "Error creating PDF", details: error.message })
   }
 })
 

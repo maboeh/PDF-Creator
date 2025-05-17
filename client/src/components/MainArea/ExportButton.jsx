@@ -19,14 +19,28 @@ const ExportButton = ({ content }) => {
       }
 
       const file = await window.showSaveFilePicker(opts)
-      console.log(file)
+
+      // Erstelle ein vollständiges HTML-Dokument mit Styling für Tabellen
+      const completeHtml = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; }
+              table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+              th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+              th { background-color: #f2f2f2; }
+            </style>
+          </head>
+          <body>${content}</body>
+        </html>
+      `
 
       const response = await fetch("http://localhost:3000/api/export-pdf", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ htmlContent: content }),
+        body: JSON.stringify({ htmlContent: completeHtml }),
       })
 
       if (!response.ok) {

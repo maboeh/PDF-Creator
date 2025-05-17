@@ -10,8 +10,26 @@ const PdfPreview = ({ content }) => {
     if (content) {
       // Konfiguriere DOMPurify, um Tabellen zu erlauben
       const sanitizedContent = DOMPurify.sanitize(content, {
-        ADD_TAGS: ["table", "thead", "tbody", "tr", "th", "td"],
-        ADD_ATTR: ["colspan", "rowspan"],
+        ADD_TAGS: [
+          "table",
+          "thead",
+          "tbody",
+          "tr",
+          "th",
+          "td",
+          "colgroup",
+          "col",
+        ],
+        ADD_ATTR: [
+          "colspan",
+          "rowspan",
+          "style",
+          "border",
+          "cellpadding",
+          "cellspacing",
+          "width",
+          "height",
+        ],
       })
       setHtmlContent(sanitizedContent)
     }
