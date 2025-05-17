@@ -4,8 +4,10 @@ import HeaderArea from "./components/MainArea/HeaderArea"
 import Navigation from "./components/MainArea/Navigation"
 import EditorArea from "./components/TextArea/EditorArea"
 import PreviewAreaView from "./components/PreviewArea/PreviewAreaView"
+
 function App() {
   const [content, setContent] = useState("")
+  const [editorInstance, setEditorInstance] = useState(null)
 
   const handleContentChange = ({ editor }) => {
     setContent(editor.getHTML())
@@ -29,6 +31,8 @@ function App() {
             <EditorArea
               content={content}
               handleContentChange={handleContentChange}
+              editorInstance={editorInstance}
+              setEditorInstance={setEditorInstance}
             />
             {/* Vorschau-Zeile ebenfalls innerhalb der schmaleren Spalte */}
             <div className="row">
