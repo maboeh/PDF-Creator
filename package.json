@@ -1,9 +1,21 @@
 {
+  "name": "pdf-app",
+  "version": "1.0.0",
+  "description": "An application to generate PDFs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "echo \"Test script executed\""
+  },
+  "keywords": [
+    "pdf",
+    "generator"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
+    "express": "^4.17.1",
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "express-fileupload": "^1.5.1",
-    "html-pdf-node": "^1.0.8",
-    "puppeteer": "^24.8.2"
+    "puppeteer": "^10.4.0"
   }
 }

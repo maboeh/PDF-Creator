@@ -13,13 +13,20 @@
   height: 297mm;
   background-color: white;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  padding: 20mm;
+  padding: 21.2mm;
   margin: 0 auto;
   overflow: auto; /* Stellt sicher, dass Inhalt innerhalb der A4-Box scrollbar ist */
   font-family: Arial, sans-serif;
   position: relative;
   scrollbar-width: none; /* Scrollbalken für Firefox ausblenden */
   -ms-overflow-style: none; /* Scrollbalken für IE/Edge ausblenden */
+  background-image: linear-gradient(
+    to bottom,
+    transparent 296mm,
+    #e0e0e0 296mm,
+    #e0e0e0 297mm
+  );
+  background-size: 100% 297mm;
 }
 
 /* Scrollbalken für Webkit-Browser (Chrome, Safari) ausblenden */

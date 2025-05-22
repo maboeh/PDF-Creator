@@ -157,16 +157,23 @@
 
 .tiptap .ProseMirror {
   width: 210mm;
-  height: 297mm;
+  min-height: 297mm;
   background-color: white;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  padding: 20mm;
-  margin: 0 auto;
+  padding: 21.5mm;
+  margin: 20px auto;
   overflow: auto;
   font-family: Arial, sans-serif;
   position: relative;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 296mm,
+    #e0e0e0 296mm,
+    #e0e0e0 297mm
+  );
+  background-size: 100% 297mm;
 }
 
 .tiptap .ProseMirror :first-child {

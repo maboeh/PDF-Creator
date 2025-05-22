@@ -3,19 +3,17 @@ const router = express.Router()
 const puppeteer = require("puppeteer")
 
 router.post("/export-pdf", async (req, res) => {
+  console.log("--- PDF EXPORT ROUTE HIT ---")
   try {
     // Extract HTML content from the request
     const { htmlContent } = req.body
 
+    console.log("Received HTML content for PDF export:", htmlContent)
+
     if (!htmlContent) {
+      console.log("--- NO HTML CONTENT PROVIDED ---")
       return res.status(400).json({ error: "No HTML content provided" })
     }
-
-    // Debug: Log table presence
-    console.log(
-      "Received HTML content includes table:",
-      htmlContent.includes("<table")
-    )
 
     // Start browser with Puppeteer
     const browser = await puppeteer.launch({
@@ -33,6 +31,7 @@ router.post("/export-pdf", async (req, res) => {
     // Additional styling injection to ensure tables are visible
     await page.addStyleTag({
       content: `
+        body { font-family: Arial, sans-serif; line-height: 1.6; } /* Vorhandenes CSS für den Body */
         table { 
           border-collapse: collapse; 
           width: 100%; 
@@ -47,11 +46,18 @@ router.post("/export-pdf", async (req, res) => {
         th { 
           background-color: #f2f2f2; 
         }
+
+        /* --- NEUE CSS-REGELN FÜR SEITENUMBRÜCHE --- */
+        p, div {
+          page-break-inside: avoid; /* Versucht, Absätze und Divs nicht zu zerschneiden */
+        }
+        /* Du könntest hier spezifischere Selektoren verwenden, 
+           z.B. für bestimmte Klassen, die dein Rich-Text-Editor generiert */
       `,
     })
 
     // Wait to ensure rendering is complete
-    await page.waitForTimeout(1000)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Generate PDF with more options
     const pdfBuffer = await page.pdf({
@@ -63,6 +69,7 @@ router.post("/export-pdf", async (req, res) => {
         bottom: "20mm",
         left: "20mm",
       },
+      scale: 0.975,
       preferCSSPageSize: false,
       displayHeaderFooter: false,
     })
@@ -74,7 +81,9 @@ router.post("/export-pdf", async (req, res) => {
     res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
     res.send(pdfBuffer)
   } catch (error) {
-    console.error("Error creating PDF:", error)
+    console.error("--- PDF EXPORT ERROR CAUGHT ---")
+    console.error("Error Message:", error.message)
+    console.error("Error Stack:", error.stack)
     res
       .status(500)
       .json({ error: "Error creating PDF", details: error.message })

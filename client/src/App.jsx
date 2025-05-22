@@ -12,6 +12,16 @@ function App() {
   const handleContentChange = ({ editor }) => {
     setContent(editor.getHTML())
   }
+  const handleClearContent = () => {
+    setContent("")
+    if (editorInstance && editorInstance.commands) {
+      editorInstance.commands.clearContent(true)
+    } else {
+      console.warn(
+        "Editor instance or commands not available when trying to clear content."
+      )
+    }
+  }
 
   return (
     <>
@@ -22,7 +32,7 @@ function App() {
         style={{ backgroundColor: "#F5F5F5" }}
       >
         {/* Seitenheader bleibt über die volle Breite */}
-        <HeaderArea content={content} />
+        <HeaderArea content={content} handleClearContent={handleClearContent} />
         {/* Neue Zeile für die Zentrierung */}
         <div className="row justify-content-center">
           {/* Neue Spalte, um die Breite zu begrenzen (ca. 83% auf lg-Screens) */}
