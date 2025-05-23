@@ -69,7 +69,7 @@ router.post("/export-pdf", async (req, res) => {
         bottom: "20mm",
         left: "20mm",
       },
-      scale: 0.975,
+      scale: 0.988,
       preferCSSPageSize: false,
       displayHeaderFooter: false,
     })
