@@ -1,7 +1,8 @@
 
 
-  VITE v6.3.4  ready in 141 ms
+  VITE v4.5.14  ready in 117 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-  ➜  press h + enter to show help
+  ➜  press h to show help
+21:57:50 [vite] hmr update /src/styles/PDFPreview.css

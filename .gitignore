@@ -69,3 +69,6 @@ cursor.json
 # Projekt-spezifische Dateien
 prd.md
 main.png 
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

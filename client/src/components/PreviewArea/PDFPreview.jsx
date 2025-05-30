@@ -1,9 +1,27 @@
-import { useEffect, useState } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
+import { Document, Page, pdfjs } from "react-pdf"
+import "react-pdf/dist/esm/Page/AnnotationLayer.css"
+import "react-pdf/dist/esm/Page/TextLayer.css"
 import "./../../styles/PDFPreview.css"
 import DOMPurify from "dompurify"
 
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`
+
 const PdfPreview = ({ content }) => {
   const [htmlContent, setHtmlContent] = useState("")
+  const [pdfData, setPdfData] = useState(null)
+  const [numPages, setNumPages] = useState(null)
+  const [pageNumber, setPageNumber] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Memoize options to prevent unnecessary reloads
+  const pdfOptions = useMemo(
+    () => ({
+      workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
+    }),
+    []
+  )
 
   useEffect(() => {
     if (!content) {
@@ -125,13 +143,161 @@ const PdfPreview = ({ content }) => {
     setHtmlContent(sanitizedContent)
   }, [content])
 
+  const fetchPdf = useCallback(async () => {
+    if (!htmlContent) {
+      setPdfData(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    setPageNumber(1) // Reset auf Seite 1 bei neuem Inhalt
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/generate-preview-pdf",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ htmlContent }),
+        }
+      )
+
+      if (!response.ok) {
+        const errData = await response
+          .json()
+          .catch(() => ({ message: "Fehler beim Abrufen des PDFs" }))
+        throw new Error(
+          errData.details ||
+            errData.message ||
+            `HTTP-Fehler: ${response.status}`
+        )
+      }
+
+      const arrayBuffer = await response.arrayBuffer()
+      // Store as object with data property for react-pdf
+      setPdfData({ data: arrayBuffer })
+    } catch (e) {
+      console.error("Fehler beim Laden der PDF-Vorschau:", e)
+      setError(e.message)
+      setPdfData(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [htmlContent])
+
+  useEffect(() => {
+    // Debouncing, um nicht bei jeder Tastenanschlagsänderung ein PDF anzufordern
+    const debounceTimeout = setTimeout(fetchPdf, 500) // 500ms Verzögerung
+
+    return () => clearTimeout(debounceTimeout) // Cleanup-Funktion
+  }, [fetchPdf])
+
+  function onDocumentLoadSuccess({ numPages: nextNumPages }) {
+    setNumPages(nextNumPages)
+  }
+
+  const goToPrevPage = () =>
+    setPageNumber((prevPageNumber) => Math.max(1, prevPageNumber - 1))
+  const goToNextPage = () =>
+    setPageNumber((prevPageNumber) => Math.min(numPages, prevPageNumber + 1))
+
+  if (isLoading) {
+    return <div>PDF-Vorschau wird geladen...</div>
+  }
+
+  if (error) {
+    return (
+      <div style={{ color: "red" }}>Fehler bei der PDF-Vorschau: {error}</div>
+    )
+  }
+
+  if (!pdfData) {
+    return <div>Keine Vorschau verfügbar. Bitte Inhalt im Editor eingeben.</div>
+  }
+
   return (
     <div className="pdf-preview-container">
-      <div className="a4-paper">
-        <div
-          className="a4-content"
-          dangerouslySetInnerHTML={{ __html: htmlContent }}
-        />
+      {/* Navigation Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: "20px",
+          gap: "15px",
+          padding: "10px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          border: "1px solid #dee2e6",
+        }}
+      >
+        <button
+          onClick={goToPrevPage}
+          disabled={pageNumber <= 1}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: pageNumber <= 1 ? "#e9ecef" : "#007bff",
+            color: pageNumber <= 1 ? "#6c757d" : "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: pageNumber <= 1 ? "not-allowed" : "pointer",
+          }}
+        >
+          ← Vorherige
+        </button>
+        <span
+          style={{
+            margin: "0 15px",
+            fontWeight: "bold",
+            fontSize: "16px",
+            color: "#495057",
+          }}
+        >
+          Seite {pageNumber} von {numPages || "--"}
+        </span>
+        <button
+          onClick={goToNextPage}
+          disabled={pageNumber >= numPages}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: pageNumber >= numPages ? "#e9ecef" : "#007bff",
+            color: pageNumber >= numPages ? "#6c757d" : "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: pageNumber >= numPages ? "not-allowed" : "pointer",
+          }}
+        >
+          Nächste →
+        </button>
+      </div>
+
+      {/* PDF Content */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          width: "100%",
+          overflow: "auto",
+          maxHeight: "calc(80vh - 80px)", // Abzug für Navigation
+        }}
+      >
+        <Document
+          file={pdfData}
+          onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={(e) => {
+            console.error("Document load error:", e)
+            setError("Fehler beim Laden des Dokuments.")
+          }}
+          options={pdfOptions}
+        >
+          <Page
+            pageNumber={pageNumber}
+            width={600} // Breite der Seite, z.B. 600px oder dynamisch
+            renderTextLayer={true} // Ermöglicht Textauswahl
+            renderAnnotationLayer={true} // Zeigt Annotationen an
+          />
+        </Document>
       </div>
     </div>
   )

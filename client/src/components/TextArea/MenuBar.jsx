@@ -190,7 +190,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().addRowAfter().run()}
               >
@@ -199,7 +199,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().deleteTable().run()}
               >
@@ -208,7 +208,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().mergeCells().run()}
               >
@@ -217,7 +217,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().splitCell().run()}
               >
@@ -226,7 +226,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() =>
                   editor.chain().focus().toggleHeaderColumn().run()
@@ -237,7 +237,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().toggleHeaderRow().run()}
               >
@@ -246,7 +246,7 @@ const MenuBar = ({ editor }) => {
             </li>
             <li>
               <a
-                class="dropdown-item"
+                className="dropdown-item"
                 href="#"
                 onClick={() => editor.chain().focus().toggleHeaderCell().run()}
               >
