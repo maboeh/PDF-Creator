@@ -3,6 +3,25 @@ const router = express.Router()
 const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+// Configure sanitize-html to allow standard rich text editor tags and attributes
+// but strip dangerous content like <script>, <iframe>, <object>, etc.
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "h1",
+    "h2",
+    "img",
+    "span",
+    "u",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class", "align", "title"],
+    img: ["src", "width", "height", "alt"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
@@ -21,13 +40,16 @@ router.post("/export-pdf", async (req, res) => {
     )
     const editorCss = fs.readFileSync(editorCssPath, "utf8")
 
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+
     const browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
@@ -185,13 +207,16 @@ router.post("/generate-preview-pdf", async (req, res) => {
         }
       `
 
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+
     const browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
