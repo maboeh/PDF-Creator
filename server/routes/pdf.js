@@ -3,6 +3,27 @@ const router = express.Router()
 const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+// Configure sanitization options
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "h1",
+    "h2",
+    "span",
+    "u",
+    "br",
+    "div",
+    "p",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class"],
+    img: ["src", "alt", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
@@ -14,6 +35,9 @@ router.post("/export-pdf", async (req, res) => {
       console.log("--- NO HTML CONTENT PROVIDED ---")
       return res.status(400).json({ error: "No HTML content provided" })
     }
+
+    // Sanitize the HTML content
+    const sanitizedHtmlContent = sanitizeHtml(htmlContent, sanitizeOptions)
 
     const editorCssPath = path.join(
       __dirname,
@@ -27,7 +51,7 @@ router.post("/export-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtmlContent, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
@@ -139,6 +163,9 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "No HTML content provided" })
     }
 
+    // Sanitize the HTML content
+    const sanitizedHtmlContent = sanitizeHtml(htmlContent, sanitizeOptions)
+
     const editorCssPath = path.join(
       __dirname,
       "../../client/src/styles/richTextEditor.css"
@@ -191,7 +218,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtmlContent, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
