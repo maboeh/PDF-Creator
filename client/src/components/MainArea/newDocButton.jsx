@@ -1,4 +1,14 @@
 const NewDocButton = ({ handleClearContent }) => {
+  const handleClick = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to create a new document? All unsaved changes will be lost."
+      )
+    ) {
+      handleClearContent()
+    }
+  }
+
   return (
     <div>
       <button
@@ -8,7 +18,9 @@ const NewDocButton = ({ handleClearContent }) => {
           borderColor: "#26B9C8",
           color: "#FFFFFF",
         }}
-        onClick={handleClearContent}
+        onClick={handleClick}
+        aria-label="Create new document"
+        title="Create a new blank document"
       >
         New Document
       </button>
