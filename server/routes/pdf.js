@@ -4,6 +4,58 @@ const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
 
+// Singleton browser instance
+let browserInstance = null
+
+// Cache CSS content
+let cachedEditorCss = null
+const editorCssPath = path.join(
+  __dirname,
+  "../../client/src/styles/richTextEditor.css"
+)
+
+const getEditorCss = () => {
+  if (!cachedEditorCss) {
+    try {
+      cachedEditorCss = fs.readFileSync(editorCssPath, "utf8")
+    } catch (err) {
+      console.error("Error reading editor CSS:", err)
+      return ""
+    }
+  }
+  return cachedEditorCss
+}
+
+const getBrowser = async () => {
+  if (!browserInstance || !browserInstance.isConnected()) {
+    console.log("Launching new Puppeteer browser instance...")
+    browserInstance = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+  }
+  return browserInstance
+}
+
+// Graceful shutdown
+const gracefulShutdown = async () => {
+  if (browserInstance) {
+    console.log("Closing Puppeteer browser instance...")
+    await browserInstance.close()
+    browserInstance = null
+  }
+}
+
+process.on("SIGINT", async () => {
+  await gracefulShutdown()
+  process.exit(0)
+})
+
+process.on("SIGTERM", async () => {
+  await gracefulShutdown()
+  process.exit(0)
+})
+
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
   try {
@@ -15,20 +67,13 @@ router.post("/export-pdf", async (req, res) => {
       return res.status(400).json({ error: "No HTML content provided" })
     }
 
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+    const editorCss = getEditorCss()
 
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
+    const browser = await getBrowser()
     const page = await browser.newPage()
 
     await page.setContent(htmlContent, {
-      waitUntil: ["domcontentloaded", "networkidle0"],
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     })
 
@@ -112,7 +157,7 @@ router.post("/export-pdf", async (req, res) => {
       displayHeaderFooter: false,
     })
 
-    await browser.close()
+    await page.close()
 
     res.contentType("application/pdf")
     res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
@@ -139,11 +184,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "No HTML content provided" })
     }
 
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+    const editorCss = getEditorCss()
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
     // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
@@ -185,14 +226,11 @@ router.post("/generate-preview-pdf", async (req, res) => {
         }
       `
 
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
+    const browser = await getBrowser()
     const page = await browser.newPage()
 
     await page.setContent(htmlContent, {
-      waitUntil: ["domcontentloaded", "networkidle0"],
+      waitUntil: "domcontentloaded",
       timeout: 30000,
     })
 
@@ -216,7 +254,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
       displayHeaderFooter: false,
     })
 
-    await browser.close()
+    await page.close()
 
     res.contentType("application/pdf")
     res.send(pdfBuffer)
