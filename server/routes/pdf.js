@@ -3,6 +3,53 @@ const router = express.Router()
 const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "span",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "u",
+    "s",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+    "br",
+    "p",
+    "strong",
+    "em",
+    "blockquote",
+    "code",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+  ]),
+  allowedAttributes: {
+    "*": ["style", "class", "id", "align"],
+    a: ["href", "name", "target"],
+    img: ["src", "srcset", "alt", "title", "width", "height", "loading"],
+    table: ["border", "cellpadding", "cellspacing"],
+    td: ["colspan", "rowspan", "width", "height"],
+    th: ["colspan", "rowspan", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data", "mailto"],
+}
+
+const cleanHtml = (dirty) => {
+  return sanitizeHtml(dirty, sanitizeOptions)
+}
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
@@ -14,6 +61,8 @@ router.post("/export-pdf", async (req, res) => {
       console.log("--- NO HTML CONTENT PROVIDED ---")
       return res.status(400).json({ error: "No HTML content provided" })
     }
+
+    const sanitizedHtml = cleanHtml(htmlContent)
 
     const editorCssPath = path.join(
       __dirname,
@@ -27,7 +76,7 @@ router.post("/export-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
@@ -139,6 +188,8 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "No HTML content provided" })
     }
 
+    const sanitizedHtml = cleanHtml(htmlContent)
+
     const editorCssPath = path.join(
       __dirname,
       "../../client/src/styles/richTextEditor.css"
@@ -191,7 +242,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
