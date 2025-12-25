@@ -1,8 +1,54 @@
 const express = require("express")
 const router = express.Router()
-const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const { getBrowser } = require("../utils/browser")
+
+// Read CSS files once at startup to avoid blocking file I/O on every request
+const editorCssPath = path.join(
+  __dirname,
+  "../../client/src/styles/richTextEditor.css"
+)
+// Ensure CSS file exists and can be read; otherwise fail fast
+const editorCss = fs.readFileSync(editorCssPath, "utf8")
+
+const pdfSpecificStyles = `
+    * {
+      box-sizing: border-box !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      min-height: initial !important;
+      background: none !important;
+    }
+    .tiptap, .ProseMirror,
+    .tiptap .ProseMirror,
+    .tiptap > .ProseMirror {
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      background: none !important;
+      min-height: initial !important;
+      width: auto !important;
+      border: none !important;
+      border-radius: 0 !important;
+      overflow: visible !important;
+    }
+    p, div {
+      page-break-inside: avoid;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+`
 const sanitizeHtml = require("sanitize-html")
 
 // Configure sanitization to allow rich text but strip scripts/dangerous attributes
@@ -23,6 +69,7 @@ const sanitizeOptions = {
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
+  let page = null
   try {
     let { htmlContent } = req.body
 
@@ -31,33 +78,16 @@ router.post("/export-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    // Security: Sanitize HTML input to prevent XSS/SSRF in Puppeteer
-    const cleanHtml = sanitizeHtml(htmlContent, sanitizeOptions)
-    console.log("Sanitized HTML content length:", cleanHtml.length)
-
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    // Check if file exists to avoid crashes
-    let editorCss = ""
-    if (fs.existsSync(editorCssPath)) {
-        editorCss = fs.readFileSync(editorCssPath, "utf8")
-    } else {
-        console.warn("Rich text editor CSS not found at:", editorCssPath)
-    }
-
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-    const page = await browser.newPage()
+    const browser = await getBrowser()
+    page = await browser.newPage()
 
     await page.setContent(cleanHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
+    await page.addStyleTag({ content: editorCss })
+    await page.addStyleTag({ content: pdfSpecificStyles })
     if (editorCss) {
         await page.addStyleTag({ content: editorCss })
     }
@@ -140,8 +170,6 @@ router.post("/export-pdf", async (req, res) => {
       displayHeaderFooter: false,
     })
 
-    await browser.close()
-
     res.contentType("application/pdf")
     res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
     res.send(pdfBuffer)
@@ -153,15 +181,20 @@ router.post("/export-pdf", async (req, res) => {
     // Security: Do not expose error details to client
     res
       .status(500)
-      .json({ error: "An error occurred while generating the PDF." })
+      .json({ error: "Error creating PDF", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
 // Neue Route für die PDF-Vorschau Generierung
 router.post("/generate-preview-pdf", async (req, res) => {
   console.log("--- PDF PREVIEW ROUTE HIT ---")
+  let page = null
   try {
-    let { htmlContent } = req.body
+    const { htmlContent } = req.body
 
     if (!htmlContent || typeof htmlContent !== 'string') {
       console.log("--- INVALID OR MISSING HTML CONTENT FOR PREVIEW ---")
@@ -236,9 +269,6 @@ router.post("/generate-preview-pdf", async (req, res) => {
     }
     await page.addStyleTag({ content: pdfSpecificStyles })
 
-    // Kurze Wartezeit, um sicherzustellen, dass Stile angewendet werden
-    // await new Promise((resolve) => setTimeout(resolve, 1000)) // Kann oft entfernt oder reduziert werden
-
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -248,12 +278,10 @@ router.post("/generate-preview-pdf", async (req, res) => {
         bottom: "20mm",
         left: "20mm",
       },
-      scale: 1, // Zurückgesetzt auf 1 für den Anfang
-      preferCSSPageSize: false, // Wichtig für korrekte A4-Anwendung mit Rändern
+      scale: 1,
+      preferCSSPageSize: false,
       displayHeaderFooter: false,
     })
-
-    await browser.close()
 
     res.contentType("application/pdf")
     res.send(pdfBuffer)
@@ -264,7 +292,11 @@ router.post("/generate-preview-pdf", async (req, res) => {
     // Security: Do not expose error details to client
     res
       .status(500)
-      .json({ error: "An error occurred while generating the PDF preview." })
+      .json({ error: "Error creating PDF preview", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
