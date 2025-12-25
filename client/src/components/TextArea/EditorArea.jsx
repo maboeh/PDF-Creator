@@ -1,9 +1,39 @@
 import RichTextEditor from "./richTextEditor"
 import UploadButton from "./uploadButton"
-import { useState } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
+
+// Custom hook for debouncing callbacks
+function useDebouncedCallback(callback, delay) {
+  const timeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
+
+  return useCallback(
+    (...args) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        callback(...args)
+      }, delay)
+    },
+    [callback, delay]
+  )
+}
 
 const EditorArea = ({ content, handleContentChange }) => {
   const [editorInstance, setEditorInstance] = useState(null)
+  const debouncedHandleContentChange = useDebouncedCallback(
+    handleContentChange,
+    300
+  )
 
   const handleTextUpload = (fileContent, fileType) => {
     if (!editorInstance) return
@@ -46,7 +76,7 @@ const EditorArea = ({ content, handleContentChange }) => {
             <div className="card-body p-0">
               <RichTextEditor
                 content={content}
-                handleContentChange={handleContentChange}
+                handleContentChange={debouncedHandleContentChange}
                 onReady={(editor) => setEditorInstance(editor)}
               />
             </div>
