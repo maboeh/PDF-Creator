@@ -50,6 +50,62 @@ const cleanHtml = (dirty) => {
   return sanitizeHtml(dirty, sanitizeOptions)
 }
 
+// --- Optimization: Cache CSS ---
+const editorCssPath = path.join(
+  __dirname,
+  "../../client/src/styles/richTextEditor.css"
+)
+// Lazily load CSS or load at startup. We'll load lazily but cache it.
+let cachedEditorCss = null
+function getEditorCss() {
+  if (!cachedEditorCss) {
+    try {
+      cachedEditorCss = fs.readFileSync(editorCssPath, "utf8")
+    } catch (err) {
+      console.error("Failed to read editor CSS:", err)
+      return "" // Fallback
+    }
+  }
+  return cachedEditorCss
+}
+
+// --- Optimization: Singleton Browser ---
+let browserInstance = null
+
+async function getBrowser() {
+  if (browserInstance && browserInstance.isConnected()) {
+    return browserInstance
+  }
+
+  console.log("Launching new Puppeteer browser instance...")
+  browserInstance = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  })
+
+  // Ensure browser closes on process exit
+  const closeBrowser = async () => {
+    if (browserInstance) {
+      console.log("Closing Puppeteer browser...")
+      await browserInstance.close()
+      browserInstance = null
+    }
+  }
+
+  process.once("SIGINT", closeBrowser)
+  process.once("SIGTERM", closeBrowser)
+
+  // Listen for disconnection to clear the variable
+  browserInstance.on("disconnected", () => {
+    console.log("Browser disconnected.")
+    if (browserInstance && !browserInstance.isConnected()) {
+        browserInstance = null
+    }
+  })
+
+  return browserInstance
+}
+
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
   try {
@@ -78,35 +134,18 @@ const sanitizeOptions = {
 
     const sanitizedHtml = cleanHtml(htmlContent)
 
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
-
-let editorCss = ""
-try {
-  editorCss = fs.readFileSync(editorCssPath, "utf8")
-} catch (err) {
-  console.warn("Warning: Could not read richTextEditor.css at startup", err)
-}
-
-    // Sanitize HTML content to prevent XSS
-    const cleanHtmlContent = sanitizeHtml(htmlContent, sanitizeConfig)
-
     const editorCss = getEditorCss()
 
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
-      waitUntil: ["domcontentloaded", "networkidle0"],
-      timeout: 30000,
-    })
+    try {
+      await page.setContent(htmlContent, {
+        waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
+        timeout: 30000,
+      })
 
-      if (editorCss) {
-        await page.addStyleTag({ content: editorCss })
-      }
+      await page.addStyleTag({ content: editorCss })
 
       await page.addStyleTag({
         content: `
@@ -170,11 +209,30 @@ try {
         `,
       })
 
-      // Removed unnecessary 1s timeout - networkidle0 handles wait
+      // Optimization: Removed arbitrary 1000ms timeout
       // await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    await page.close()
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          right: "20mm",
+          bottom: "20mm",
+          left: "20mm",
+        },
+        scale: 0.97,
+        preferCSSPageSize: false,
+        displayHeaderFooter: false,
+      })
 
+      res.contentType("application/pdf")
+      res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
+      res.send(pdfBuffer)
+    } finally {
+      // Important: Close the page, not the browser!
+      await page.close()
+    }
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
     console.error("Error ID:", Date.now()) // Log an ID to correlate
@@ -203,13 +261,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    const sanitizedHtml = cleanHtml(htmlContent)
-
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+    const editorCss = getEditorCss()
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
     // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
@@ -254,17 +306,17 @@ router.post("/generate-preview-pdf", async (req, res) => {
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
-      waitUntil: ["domcontentloaded", "networkidle0"],
-      timeout: 30000,
-    })
+    try {
+      await page.setContent(htmlContent, {
+        waitUntil: "domcontentloaded", // Optimization
+        timeout: 30000,
+      })
 
-      if (editorCss) {
-        await page.addStyleTag({ content: editorCss })
-      }
+      await page.addStyleTag({ content: editorCss })
       await page.addStyleTag({ content: pdfSpecificStyles })
 
-    await page.close()
+      // Kurze Wartezeit, um sicherzustellen, dass Stile angewendet werden
+      // await new Promise((resolve) => setTimeout(resolve, 1000)) // Kann oft entfernt oder reduziert werden
 
       const pdfBuffer = await page.pdf({
         format: "A4",
