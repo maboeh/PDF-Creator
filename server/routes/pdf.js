@@ -4,6 +4,24 @@ const fs = require("fs")
 const path = require("path")
 const sanitizeHtml = require("sanitize-html")
 
+// Configuration for HTML sanitization
+// Allows rich text content (headings, images with data URIs, styles) but strips scripts and other dangerous elements.
+const sanitizeConfig = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "h1",
+    "h2",
+    "span",
+    "div",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class"],
+    img: ["src", "alt", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
+
 // Configure sanitization options
 const sanitizeOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
@@ -37,8 +55,14 @@ try {
   console.warn("Warning: Could not read richTextEditor.css at startup", err)
 }
 
-// Singleton browser instance
-let browserInstance = null
+    // Sanitize HTML content to prevent XSS
+    const cleanHtmlContent = sanitizeHtml(htmlContent, sanitizeConfig)
+
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    const editorCss = fs.readFileSync(editorCssPath, "utf8")
 
 async function getBrowser() {
   if (!browserInstance || !browserInstance.isConnected()) {
@@ -66,11 +90,10 @@ router.post("/export-pdf", async (req, res) => {
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    try {
-      await page.setContent(htmlContent, {
-        waitUntil: ["domcontentloaded", "networkidle0"],
-        timeout: 30000,
-      })
+    await page.setContent(cleanHtmlContent, {
+      waitUntil: ["domcontentloaded", "networkidle0"],
+      timeout: 30000,
+    })
 
       if (editorCss) {
         await page.addStyleTag({ content: editorCss })
@@ -191,6 +214,15 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
+    // Sanitize HTML content to prevent XSS
+    const cleanHtmlContent = sanitizeHtml(htmlContent, sanitizeConfig)
+
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
     // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
     const pdfSpecificStyles = `
@@ -234,11 +266,10 @@ router.post("/generate-preview-pdf", async (req, res) => {
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    try {
-      await page.setContent(htmlContent, {
-        waitUntil: ["domcontentloaded", "networkidle0"],
-        timeout: 30000,
-      })
+    await page.setContent(cleanHtmlContent, {
+      waitUntil: ["domcontentloaded", "networkidle0"],
+      timeout: 30000,
+    })
 
       if (editorCss) {
         await page.addStyleTag({ content: editorCss })
