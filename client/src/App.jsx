@@ -13,13 +13,19 @@ function App() {
     setContent(editor.getHTML())
   }
   const handleClearContent = () => {
-    setContent("")
-    if (editorInstance && editorInstance.commands) {
-      editorInstance.commands.clearContent(true)
-    } else {
-      console.warn(
-        "Editor instance or commands not available when trying to clear content."
+    if (
+      window.confirm(
+        "Are you sure you want to start a new document? This will clear your current work."
       )
+    ) {
+      setContent("")
+      if (editorInstance && editorInstance.commands) {
+        editorInstance.commands.clearContent(true)
+      } else {
+        console.warn(
+          "Editor instance or commands not available when trying to clear content."
+        )
+      }
     }
   }
 
