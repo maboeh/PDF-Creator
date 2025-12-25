@@ -1,8 +1,54 @@
 const express = require("express")
 const router = express.Router()
-const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "span",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "u",
+    "s",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+    "br",
+    "p",
+    "strong",
+    "em",
+    "blockquote",
+    "code",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+  ]),
+  allowedAttributes: {
+    "*": ["style", "class", "id", "align"],
+    a: ["href", "name", "target"],
+    img: ["src", "srcset", "alt", "title", "width", "height", "loading"],
+    table: ["border", "cellpadding", "cellspacing"],
+    td: ["colspan", "rowspan", "width", "height"],
+    th: ["colspan", "rowspan", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data", "mailto"],
+}
+
+const cleanHtml = (dirty) => {
+  return sanitizeHtml(dirty, sanitizeOptions)
+}
 
 // --- Optimization: Cache CSS ---
 const editorCssPath = path.join(
@@ -66,10 +112,27 @@ router.post("/export-pdf", async (req, res) => {
     const { htmlContent } = req.body
     console.log("Received HTML content for PDF export:", htmlContent)
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED ---")
-      return res.status(400).json({ error: "No HTML content provided" })
-    }
+// Configure sanitization options
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "h1",
+    "h2",
+    "span",
+    "u",
+    "br",
+    "div",
+    "p",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class"],
+    img: ["src", "alt", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
+
+    const sanitizedHtml = cleanHtml(htmlContent)
 
     const editorCss = getEditorCss()
 
@@ -172,24 +235,30 @@ router.post("/export-pdf", async (req, res) => {
     }
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
+    console.error("Error ID:", Date.now()) // Log an ID to correlate
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
 // Neue Route für die PDF-Vorschau Generierung
 router.post("/generate-preview-pdf", async (req, res) => {
   console.log("--- PDF PREVIEW ROUTE HIT ---")
+  let page = null
   try {
     const { htmlContent } = req.body
-    // console.log("Received HTML content for PDF preview:", htmlContent) // Optional: für Debugging
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED FOR PREVIEW ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT FOR PREVIEW ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
     const editorCss = getEditorCss()
@@ -272,9 +341,14 @@ router.post("/generate-preview-pdf", async (req, res) => {
     console.error("--- PDF PREVIEW ERROR CAUGHT ---")
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF preview", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
