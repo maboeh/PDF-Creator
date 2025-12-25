@@ -1,8 +1,8 @@
 const NewDocButton = ({ handleClearContent }) => {
-  const handleConfirmClear = () => {
+  const handleClick = () => {
     if (
       window.confirm(
-        "Are you sure you want to clear the document? This action cannot be undone."
+        "Are you sure you want to create a new document? This will clear your current work.",
       )
     ) {
       handleClearContent()
@@ -18,8 +18,8 @@ const NewDocButton = ({ handleClearContent }) => {
           borderColor: "#26B9C8",
           color: "#FFFFFF",
         }}
-        onClick={handleConfirmClear}
-        aria-label="Create new document (clears current content)"
+        onClick={handleClick}
+        aria-label="Create new document"
       >
         New Document
       </button>
