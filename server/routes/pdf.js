@@ -4,57 +4,51 @@ const fs = require("fs")
 const path = require("path")
 const sanitizeHtml = require("sanitize-html")
 
-// Singleton browser instance
-let browserInstance = null
-
-// Cache CSS content
-let cachedEditorCss = null
-const editorCssPath = path.join(
-  __dirname,
-  "../../client/src/styles/richTextEditor.css"
-)
-
-const getEditorCss = () => {
-  if (!cachedEditorCss) {
-    try {
-      cachedEditorCss = fs.readFileSync(editorCssPath, "utf8")
-    } catch (err) {
-      console.error("Error reading editor CSS:", err)
-      return ""
-    }
-  }
-  return cachedEditorCss
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "span",
+    "div",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "u",
+    "s",
+    "table",
+    "thead",
+    "tbody",
+    "tfoot",
+    "tr",
+    "th",
+    "td",
+    "br",
+    "p",
+    "strong",
+    "em",
+    "blockquote",
+    "code",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+  ]),
+  allowedAttributes: {
+    "*": ["style", "class", "id", "align"],
+    a: ["href", "name", "target"],
+    img: ["src", "srcset", "alt", "title", "width", "height", "loading"],
+    table: ["border", "cellpadding", "cellspacing"],
+    td: ["colspan", "rowspan", "width", "height"],
+    th: ["colspan", "rowspan", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data", "mailto"],
 }
 
-const getBrowser = async () => {
-  if (!browserInstance || !browserInstance.isConnected()) {
-    console.log("Launching new Puppeteer browser instance...")
-    browserInstance = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    })
-  }
-  return browserInstance
+const cleanHtml = (dirty) => {
+  return sanitizeHtml(dirty, sanitizeOptions)
 }
-
-// Graceful shutdown
-const gracefulShutdown = async () => {
-  if (browserInstance) {
-    console.log("Closing Puppeteer browser instance...")
-    await browserInstance.close()
-    browserInstance = null
-  }
-}
-
-process.on("SIGINT", async () => {
-  await gracefulShutdown()
-  process.exit(0)
-})
-
-process.on("SIGTERM", async () => {
-  await gracefulShutdown()
-  process.exit(0)
-})
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
@@ -82,11 +76,13 @@ const sanitizeOptions = {
   allowedSchemes: ["http", "https", "data"],
 }
 
-// Cache CSS content once at startup
-const editorCssPath = path.join(
-  __dirname,
-  "../../client/src/styles/richTextEditor.css"
-)
+    const sanitizedHtml = cleanHtml(htmlContent)
+
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    const editorCss = fs.readFileSync(editorCssPath, "utf8")
 
 let editorCss = ""
 try {
@@ -103,8 +99,8 @@ try {
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
-      waitUntil: "domcontentloaded",
+    await page.setContent(sanitizedHtml, {
+      waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
@@ -207,7 +203,13 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    const editorCss = getEditorCss()
+    const sanitizedHtml = cleanHtml(htmlContent)
+
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    const editorCss = fs.readFileSync(editorCssPath, "utf8")
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
     // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
@@ -252,8 +254,8 @@ router.post("/generate-preview-pdf", async (req, res) => {
     const browser = await getBrowser()
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
-      waitUntil: "domcontentloaded",
+    await page.setContent(sanitizedHtml, {
+      waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
