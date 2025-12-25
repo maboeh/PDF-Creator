@@ -11,6 +11,7 @@ const MenuBar = ({ editor }) => {
           onClick={() => editor.chain().focus().toggleBold().run()}
           disabled={!editor.can().chain().focus().toggleBold().run()}
           className={editor.isActive("bold") ? "is-active" : ""}
+          aria-pressed={editor.isActive("bold")}
         >
           Bold
         </button>
@@ -18,6 +19,7 @@ const MenuBar = ({ editor }) => {
           onClick={() => editor.chain().focus().toggleItalic().run()}
           disabled={!editor.can().chain().focus().toggleItalic().run()}
           className={editor.isActive("italic") ? "is-active" : ""}
+          aria-pressed={editor.isActive("italic")}
         >
           Italic
         </button>
@@ -25,6 +27,7 @@ const MenuBar = ({ editor }) => {
           onClick={() => editor.chain().focus().toggleStrike().run()}
           disabled={!editor.can().chain().focus().toggleStrike().run()}
           className={editor.isActive("strike") ? "is-active" : ""}
+          aria-pressed={editor.isActive("strike")}
         >
           Strike
         </button>
@@ -32,6 +35,7 @@ const MenuBar = ({ editor }) => {
           onClick={() => editor.chain().focus().toggleCode().run()}
           disabled={!editor.can().chain().focus().toggleCode().run()}
           className={editor.isActive("code") ? "is-active" : ""}
+          aria-pressed={editor.isActive("code")}
         >
           Code
         </button>
@@ -44,6 +48,7 @@ const MenuBar = ({ editor }) => {
         <button
           onClick={() => editor.chain().focus().setParagraph().run()}
           className={editor.isActive("paragraph") ? "is-active" : ""}
+          aria-pressed={editor.isActive("paragraph")}
         >
           Paragraph
         </button>
@@ -54,6 +59,7 @@ const MenuBar = ({ editor }) => {
           className={
             editor.isActive("heading", { level: 1 }) ? "is-active" : ""
           }
+          aria-pressed={editor.isActive("heading", { level: 1 })}
         >
           H1
         </button>
@@ -64,6 +70,7 @@ const MenuBar = ({ editor }) => {
           className={
             editor.isActive("heading", { level: 2 }) ? "is-active" : ""
           }
+          aria-pressed={editor.isActive("heading", { level: 2 })}
         >
           H2
         </button>
@@ -74,30 +81,35 @@ const MenuBar = ({ editor }) => {
           className={
             editor.isActive("heading", { level: 3 }) ? "is-active" : ""
           }
+          aria-pressed={editor.isActive("heading", { level: 3 })}
         >
           H3
         </button>
         <button
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           className={editor.isActive("bulletList") ? "is-active" : ""}
+          aria-pressed={editor.isActive("bulletList")}
         >
           Bullet list
         </button>
         <button
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           className={editor.isActive("orderedList") ? "is-active" : ""}
+          aria-pressed={editor.isActive("orderedList")}
         >
           Ordered list
         </button>
         <button
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           className={editor.isActive("codeBlock") ? "is-active" : ""}
+          aria-pressed={editor.isActive("codeBlock")}
         >
           Code block
         </button>
         <button
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           className={editor.isActive("blockquote") ? "is-active" : ""}
+          aria-pressed={editor.isActive("blockquote")}
         >
           Blockquote
         </button>
@@ -138,6 +150,7 @@ const MenuBar = ({ editor }) => {
               ? "is-active"
               : ""
           }
+          aria-pressed={editor.isActive("textStyle", { color: "#958DF1" })}
         >
           Purple
         </button>
