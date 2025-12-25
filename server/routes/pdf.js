@@ -1,8 +1,28 @@
 const express = require("express")
 const router = express.Router()
-const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+// Configure sanitization options
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
+    "h1",
+    "h2",
+    "span",
+    "u",
+    "br",
+    "div",
+    "p",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class"],
+    img: ["src", "alt", "width", "height"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
 
 // Cache CSS content once at startup
 const editorCssPath = path.join(
@@ -33,13 +53,13 @@ async function getBrowser() {
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
+  let page = null
   try {
-    const { htmlContent } = req.body
-    console.log("Received HTML content for PDF export:", htmlContent)
+    let { htmlContent } = req.body
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
     // Reuse browser instance
@@ -145,24 +165,30 @@ router.post("/export-pdf", async (req, res) => {
 
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
+    console.error("Error ID:", Date.now()) // Log an ID to correlate
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
 // Neue Route für die PDF-Vorschau Generierung
 router.post("/generate-preview-pdf", async (req, res) => {
   console.log("--- PDF PREVIEW ROUTE HIT ---")
+  let page = null
   try {
     const { htmlContent } = req.body
-    // console.log("Received HTML content for PDF preview:", htmlContent) // Optional: für Debugging
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED FOR PREVIEW ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT FOR PREVIEW ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
@@ -245,9 +271,14 @@ router.post("/generate-preview-pdf", async (req, res) => {
     console.error("--- PDF PREVIEW ERROR CAUGHT ---")
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF preview", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
