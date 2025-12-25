@@ -4,20 +4,22 @@ const fs = require("fs")
 const path = require("path")
 const sanitizeHtml = require("sanitize-html")
 
-// Configure sanitize-html to allow standard rich text editor tags and attributes
-// but strip dangerous content like <script>, <iframe>, <object>, etc.
+// Configure sanitization options
 const sanitizeOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img",
     "h1",
     "h2",
-    "img",
     "span",
     "u",
+    "br",
+    "div",
+    "p",
   ]),
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
-    "*": ["style", "class", "align", "title"],
-    img: ["src", "width", "height", "alt"],
+    "*": ["style", "class"],
+    img: ["src", "alt", "width", "height"],
   },
   allowedSchemes: ["http", "https", "data"],
 }
@@ -33,11 +35,14 @@ router.post("/export-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    const browser = await getBrowser()
-    page = await browser.newPage()
+    // Sanitize the HTML content
+    const sanitizedHtmlContent = sanitizeHtml(htmlContent, sanitizeOptions)
 
-    // Sanitize HTML input to prevent XSS and other injection attacks
-    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    const editorCss = fs.readFileSync(editorCssPath, "utf8")
 
     const browser = await puppeteer.launch({
       headless: "new",
@@ -45,7 +50,7 @@ router.post("/export-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
+    await page.setContent(sanitizedHtmlContent, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
@@ -165,8 +170,8 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    // Security: Sanitize HTML input
-    const cleanHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+    // Sanitize the HTML content
+    const sanitizedHtmlContent = sanitizeHtml(htmlContent, sanitizeOptions)
 
     const editorCssPath = path.join(
       __dirname,
@@ -226,7 +231,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
+    await page.setContent(sanitizedHtmlContent, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
