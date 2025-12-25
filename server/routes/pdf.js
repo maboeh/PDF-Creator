@@ -112,26 +112,6 @@ router.post("/export-pdf", async (req, res) => {
     const { htmlContent } = req.body
     console.log("Received HTML content for PDF export:", htmlContent)
 
-// Configure sanitization options
-const sanitizeOptions = {
-  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-    "img",
-    "h1",
-    "h2",
-    "span",
-    "u",
-    "br",
-    "div",
-    "p",
-  ]),
-  allowedAttributes: {
-    ...sanitizeHtml.defaults.allowedAttributes,
-    "*": ["style", "class"],
-    img: ["src", "alt", "width", "height"],
-  },
-  allowedSchemes: ["http", "https", "data"],
-}
-
     const sanitizedHtml = cleanHtml(htmlContent)
 
     const editorCss = getEditorCss()
@@ -140,7 +120,7 @@ const sanitizeOptions = {
     const page = await browser.newPage()
 
     try {
-      await page.setContent(htmlContent, {
+      await page.setContent(sanitizedHtml, {
         waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
         timeout: 30000,
       })
@@ -241,7 +221,7 @@ const sanitizeOptions = {
     // Security: Do not expose error details to client
     res
       .status(500)
-      .json({ error: "Error creating PDF", details: error.message })
+      .json({ error: "Error creating PDF" })
   } finally {
     if (page) {
       await page.close()
@@ -261,6 +241,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
+    const sanitizedHtml = cleanHtml(htmlContent)
     const editorCss = getEditorCss()
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
@@ -307,7 +288,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     const page = await browser.newPage()
 
     try {
-      await page.setContent(htmlContent, {
+      await page.setContent(sanitizedHtml, {
         waitUntil: "domcontentloaded", // Optimization
         timeout: 30000,
       })
@@ -344,7 +325,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     // Security: Do not expose error details to client
     res
       .status(500)
-      .json({ error: "Error creating PDF preview", details: error.message })
+      .json({ error: "Error creating PDF" })
   } finally {
     if (page) {
       await page.close()
