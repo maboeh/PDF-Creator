@@ -49,29 +49,112 @@ const pdfSpecificStyles = `
       text-align: left;
     }
 `
+const sanitizeHtml = require("sanitize-html")
+
+// Configure sanitization to allow rich text but strip scripts/dangerous attributes
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "img", "h1", "h2", "span", "div", "u", "s"
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class", "id"], // Allow styling for rich text
+    "img": ["src", "alt", "width", "height"]
+  },
+  allowedSchemes: ["http", "https", "data"],
+  allowedSchemesByTag: {
+    img: ["data", "http", "https"]
+  }
+}
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
   let page = null
   try {
-    const { htmlContent } = req.body
-    console.log("Received HTML content for PDF export:", htmlContent)
+    let { htmlContent } = req.body
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
     const browser = await getBrowser()
     page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(cleanHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
     await page.addStyleTag({ content: editorCss })
     await page.addStyleTag({ content: pdfSpecificStyles })
+    if (editorCss) {
+        await page.addStyleTag({ content: editorCss })
+    }
+
+    await page.addStyleTag({
+      content: `
+        /* --- Basic PDF Reset and Box Sizing --- */
+        * {
+          box-sizing: border-box !important;
+        }
+
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: auto !important; /* Allow content to determine width within PDF margins */
+          height: auto !important; /* Allow content to flow naturally */
+          min-height: initial !important; 
+          background: none !important; /* Ensure no body background interferes */
+        }
+
+        /* PDF-specific overrides for .ProseMirror and its container (Tiptap wrapper) */
+        .tiptap, .ProseMirror, 
+        .tiptap .ProseMirror,
+        .tiptap > .ProseMirror {
+          padding: 0 !important;
+          margin: 0 !important; 
+          box-shadow: none !important;
+          background: none !important;
+          min-height: initial !important;
+          width: auto !important;
+          border: none !important; 
+          border-radius: 0 !important;
+          overflow: visible !important;
+        }
+
+        /* --- Removed previous specific overrides for p, h1-h6, table details --- */
+        /* Let editorCss handle the primary styling as much as possible */
+
+        /* Temporarily remove page-break-inside: avoid to observe raw breaking behavior */
+        /* 
+        p, div {
+          page-break-inside: avoid;
+        }
+        */
+        p, div { /* Re-enable page-break-inside: avoid */
+          page-break-inside: avoid;
+        }
+
+        /* Base table styling - ensure it doesn't add excessive margins conflicting with editorCss */
+        table {
+          border-collapse: collapse; 
+          width: 100%; 
+          /* margin-bottom: 20px; /* Potentially problematic margin from original overrides - rely on editorCss */
+          /* border: 2px solid black !important; /* Let editorCss define table borders */
+        }
+        th, td { 
+          /* border: 1px solid black !important; /* Let editorCss define cell borders */
+          padding: 8px; /* This can be a sensible default if editorCss doesn't specify */
+          text-align: left;
+        }
+        th { 
+          /* background-color: #f2f2f2; /* Let editorCss define header background */
+        }
+      `,
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -92,8 +175,10 @@ router.post("/export-pdf", async (req, res) => {
     res.send(pdfBuffer)
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
+    console.error("Error ID:", Date.now()) // Log an ID to correlate
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF", details: error.message })
@@ -111,20 +196,77 @@ router.post("/generate-preview-pdf", async (req, res) => {
   try {
     const { htmlContent } = req.body
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED FOR PREVIEW ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT FOR PREVIEW ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    const browser = await getBrowser()
-    page = await browser.newPage()
+    // Security: Sanitize HTML input
+    const cleanHtml = sanitizeHtml(htmlContent, sanitizeOptions)
 
-    await page.setContent(htmlContent, {
+    const editorCssPath = path.join(
+      __dirname,
+      "../../client/src/styles/richTextEditor.css"
+    )
+    let editorCss = ""
+    if (fs.existsSync(editorCssPath)) {
+        editorCss = fs.readFileSync(editorCssPath, "utf8")
+    }
+
+    // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
+    // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
+    const pdfSpecificStyles = `
+        * {
+          box-sizing: border-box !important;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: auto !important;
+          height: auto !important;
+          min-height: initial !important;
+          background: none !important;
+        }
+        .tiptap, .ProseMirror, 
+        .tiptap .ProseMirror,
+        .tiptap > .ProseMirror {
+          padding: 0 !important;
+          margin: 0 !important; 
+          box-shadow: none !important;
+          background: none !important;
+          min-height: initial !important;
+          width: auto !important;
+          border: none !important; 
+          border-radius: 0 !important;
+          overflow: visible !important;
+        }
+        p, div { 
+          page-break-inside: avoid;
+        }
+        table {
+          border-collapse: collapse; 
+          width: 100%; 
+        }
+        th, td { 
+          padding: 8px; 
+          text-align: left;
+        }
+      `
+
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+    const page = await browser.newPage()
+
+    await page.setContent(cleanHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
-    await page.addStyleTag({ content: editorCss })
+    if (editorCss) {
+        await page.addStyleTag({ content: editorCss })
+    }
     await page.addStyleTag({ content: pdfSpecificStyles })
 
     const pdfBuffer = await page.pdf({
@@ -147,6 +289,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     console.error("--- PDF PREVIEW ERROR CAUGHT ---")
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF preview", details: error.message })
