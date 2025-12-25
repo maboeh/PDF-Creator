@@ -2,7 +2,7 @@ const NewDocButton = ({ handleClearContent }) => {
   const handleClick = () => {
     if (
       window.confirm(
-        "Are you sure you want to create a new document? This will clear your current work.",
+        "Are you sure you want to create a new document? All unsaved changes will be lost."
       )
     ) {
       handleClearContent()
@@ -20,6 +20,7 @@ const NewDocButton = ({ handleClearContent }) => {
         }}
         onClick={handleClick}
         aria-label="Create new document"
+        title="Create a new blank document"
       >
         New Document
       </button>

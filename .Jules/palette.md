@@ -1,5 +1,3 @@
-# Palette's Journal
-
-## 2024-05-21 - Toggle Button Accessibility
-**Learning:** Toolbar buttons in `MenuBar.jsx` use visual-only state indication (`.is-active` class) without semantic attributes.
-**Action:** Added `aria-pressed` attribute to all toggle buttons to expose state to assistive technologies.
+## 2024-05-23 - Confirmation Dialogs for Destructive Actions
+**Learning:** Users can easily lose work if "Clear" or "New" actions don't have confirmation dialogs.
+**Action:** Always wrap destructive actions like `handleClearContent` with a confirmation step (e.g., `window.confirm` or a modal).
