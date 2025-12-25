@@ -1,25 +1,43 @@
 const express = require("express")
 const router = express.Router()
-const puppeteer = require("puppeteer")
 const fs = require("fs")
 const path = require("path")
+const sanitizeHtml = require("sanitize-html")
+
+// Configure sanitize-html to allow standard rich text editor tags and attributes
+// but strip dangerous content like <script>, <iframe>, <object>, etc.
+const sanitizeOptions = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "h1",
+    "h2",
+    "img",
+    "span",
+    "u",
+  ]),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    "*": ["style", "class", "align", "title"],
+    img: ["src", "width", "height", "alt"],
+  },
+  allowedSchemes: ["http", "https", "data"],
+}
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
+  let page = null
   try {
-    const { htmlContent } = req.body
-    console.log("Received HTML content for PDF export:", htmlContent)
+    let { htmlContent } = req.body
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
-    const editorCssPath = path.join(
-      __dirname,
-      "../../client/src/styles/richTextEditor.css"
-    )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+    const browser = await getBrowser()
+    page = await browser.newPage()
+
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
 
     const browser = await puppeteer.launch({
       headless: "new",
@@ -27,12 +45,16 @@ router.post("/export-pdf", async (req, res) => {
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
     await page.addStyleTag({ content: editorCss })
+    await page.addStyleTag({ content: pdfSpecificStyles })
+    if (editorCss) {
+        await page.addStyleTag({ content: editorCss })
+    }
 
     await page.addStyleTag({
       content: `
@@ -112,38 +134,48 @@ router.post("/export-pdf", async (req, res) => {
       displayHeaderFooter: false,
     })
 
-    await browser.close()
-
     res.contentType("application/pdf")
     res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
     res.send(pdfBuffer)
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
+    console.error("Error ID:", Date.now()) // Log an ID to correlate
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
 // Neue Route für die PDF-Vorschau Generierung
 router.post("/generate-preview-pdf", async (req, res) => {
   console.log("--- PDF PREVIEW ROUTE HIT ---")
+  let page = null
   try {
     const { htmlContent } = req.body
-    // console.log("Received HTML content for PDF preview:", htmlContent) // Optional: für Debugging
 
-    if (!htmlContent) {
-      console.log("--- NO HTML CONTENT PROVIDED FOR PREVIEW ---")
-      return res.status(400).json({ error: "No HTML content provided" })
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      console.log("--- INVALID OR MISSING HTML CONTENT FOR PREVIEW ---")
+      return res.status(400).json({ error: "Invalid HTML content provided" })
     }
+
+    // Security: Sanitize HTML input
+    const cleanHtml = sanitizeHtml(htmlContent, sanitizeOptions)
 
     const editorCssPath = path.join(
       __dirname,
       "../../client/src/styles/richTextEditor.css"
     )
-    const editorCss = fs.readFileSync(editorCssPath, "utf8")
+    let editorCss = ""
+    if (fs.existsSync(editorCssPath)) {
+        editorCss = fs.readFileSync(editorCssPath, "utf8")
+    }
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
     // Diese müssen wir hier wieder definieren, da sie nicht mehr in richTextEditor.css sind
@@ -185,22 +217,24 @@ router.post("/generate-preview-pdf", async (req, res) => {
         }
       `
 
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+
     const browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     })
     const page = await browser.newPage()
 
-    await page.setContent(htmlContent, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
 
-    await page.addStyleTag({ content: editorCss })
+    if (editorCss) {
+        await page.addStyleTag({ content: editorCss })
+    }
     await page.addStyleTag({ content: pdfSpecificStyles })
-
-    // Kurze Wartezeit, um sicherzustellen, dass Stile angewendet werden
-    // await new Promise((resolve) => setTimeout(resolve, 1000)) // Kann oft entfernt oder reduziert werden
 
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -211,12 +245,10 @@ router.post("/generate-preview-pdf", async (req, res) => {
         bottom: "20mm",
         left: "20mm",
       },
-      scale: 1, // Zurückgesetzt auf 1 für den Anfang
-      preferCSSPageSize: false, // Wichtig für korrekte A4-Anwendung mit Rändern
+      scale: 1,
+      preferCSSPageSize: false,
       displayHeaderFooter: false,
     })
-
-    await browser.close()
 
     res.contentType("application/pdf")
     res.send(pdfBuffer)
@@ -224,9 +256,14 @@ router.post("/generate-preview-pdf", async (req, res) => {
     console.error("--- PDF PREVIEW ERROR CAUGHT ---")
     console.error("Error Message:", error.message)
     console.error("Error Stack:", error.stack)
+    // Security: Do not expose error details to client
     res
       .status(500)
       .json({ error: "Error creating PDF preview", details: error.message })
+  } finally {
+    if (page) {
+      await page.close()
+    }
   }
 })
 
