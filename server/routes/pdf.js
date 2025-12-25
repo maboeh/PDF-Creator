@@ -2,69 +2,24 @@ const express = require("express")
 const router = express.Router()
 const fs = require("fs")
 const path = require("path")
-const { getBrowser } = require("../utils/browser")
-
-// Read CSS files once at startup to avoid blocking file I/O on every request
-const editorCssPath = path.join(
-  __dirname,
-  "../../client/src/styles/richTextEditor.css"
-)
-// Ensure CSS file exists and can be read; otherwise fail fast
-const editorCss = fs.readFileSync(editorCssPath, "utf8")
-
-const pdfSpecificStyles = `
-    * {
-      box-sizing: border-box !important;
-    }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      width: auto !important;
-      height: auto !important;
-      min-height: initial !important;
-      background: none !important;
-    }
-    .tiptap, .ProseMirror,
-    .tiptap .ProseMirror,
-    .tiptap > .ProseMirror {
-      padding: 0 !important;
-      margin: 0 !important;
-      box-shadow: none !important;
-      background: none !important;
-      min-height: initial !important;
-      width: auto !important;
-      border: none !important;
-      border-radius: 0 !important;
-      overflow: visible !important;
-    }
-    p, div {
-      page-break-inside: avoid;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      padding: 8px;
-      text-align: left;
-    }
-`
 const sanitizeHtml = require("sanitize-html")
 
-// Configure sanitization to allow rich text but strip scripts/dangerous attributes
+// Configure sanitize-html to allow standard rich text editor tags and attributes
+// but strip dangerous content like <script>, <iframe>, <object>, etc.
 const sanitizeOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
-    "img", "h1", "h2", "span", "div", "u", "s"
+    "h1",
+    "h2",
+    "img",
+    "span",
+    "u",
   ]),
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
-    "*": ["style", "class", "id"], // Allow styling for rich text
-    "img": ["src", "alt", "width", "height"]
+    "*": ["style", "class", "align", "title"],
+    img: ["src", "width", "height", "alt"],
   },
   allowedSchemes: ["http", "https", "data"],
-  allowedSchemesByTag: {
-    img: ["data", "http", "https"]
-  }
 }
 
 router.post("/export-pdf", async (req, res) => {
@@ -81,7 +36,16 @@ router.post("/export-pdf", async (req, res) => {
     const browser = await getBrowser()
     page = await browser.newPage()
 
-    await page.setContent(cleanHtml, {
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    })
+    const page = await browser.newPage()
+
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
@@ -253,13 +217,16 @@ router.post("/generate-preview-pdf", async (req, res) => {
         }
       `
 
+    // Sanitize HTML input to prevent XSS and other injection attacks
+    const sanitizedHtml = sanitizeHtml(htmlContent, sanitizeOptions)
+
     const browser = await puppeteer.launch({
       headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     })
     const page = await browser.newPage()
 
-    await page.setContent(cleanHtml, {
+    await page.setContent(sanitizedHtml, {
       waitUntil: ["domcontentloaded", "networkidle0"],
       timeout: 30000,
     })
