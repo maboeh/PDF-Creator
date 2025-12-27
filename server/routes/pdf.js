@@ -108,16 +108,18 @@ async function getBrowser() {
 
 router.post("/export-pdf", async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
+  let page = null
   try {
     const { htmlContent } = req.body
     console.log("Received HTML content for PDF export:", htmlContent)
 
+    // Security: Sanitize HTML input to prevent XSS and SSRF
     const sanitizedHtml = cleanHtml(htmlContent)
 
     const editorCss = getEditorCss()
 
     const browser = await getBrowser()
-    const page = await browser.newPage()
+    page = await browser.newPage()
 
     try {
       await page.setContent(sanitizedHtml, {
@@ -125,10 +127,10 @@ router.post("/export-pdf", async (req, res) => {
         timeout: 30000,
       })
 
-      await page.addStyleTag({ content: editorCss })
+    await page.addStyleTag({ content: editorCss })
 
-      await page.addStyleTag({
-        content: `
+    await page.addStyleTag({
+      content: `
           /* --- Basic PDF Reset and Box Sizing --- */
           * {
             box-sizing: border-box !important;
@@ -187,32 +189,28 @@ router.post("/export-pdf", async (req, res) => {
             /* background-color: #f2f2f2; /* Let editorCss define header background */
           }
         `,
-      })
+    })
 
-      // Optimization: Removed arbitrary 1000ms timeout
-      // await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Optimization: Removed arbitrary 1000ms timeout
+    // await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "20mm",
-          right: "20mm",
-          bottom: "20mm",
-          left: "20mm",
-        },
-        scale: 0.97,
-        preferCSSPageSize: false,
-        displayHeaderFooter: false,
-      })
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        right: "20mm",
+        bottom: "20mm",
+        left: "20mm",
+      },
+      scale: 0.97,
+      preferCSSPageSize: false,
+      displayHeaderFooter: false,
+    })
 
-      res.contentType("application/pdf")
-      res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
-      res.send(pdfBuffer)
-    } finally {
-      // Important: Close the page, not the browser!
-      await page.close()
-    }
+    res.contentType("application/pdf")
+    res.setHeader("Content-Disposition", "attachment; filename=document.pdf")
+    res.send(pdfBuffer)
   } catch (error) {
     console.error("--- PDF EXPORT ERROR CAUGHT ---")
     console.error("Error ID:", Date.now()) // Log an ID to correlate
@@ -241,7 +239,9 @@ router.post("/generate-preview-pdf", async (req, res) => {
       return res.status(400).json({ error: "Invalid HTML content provided" })
     }
 
+    // Security: Sanitize HTML input to prevent XSS and SSRF
     const sanitizedHtml = cleanHtml(htmlContent)
+
     const editorCss = getEditorCss()
 
     // Die PDF-spezifischen Inline-Stile, die wir vorher hatten
@@ -325,7 +325,7 @@ router.post("/generate-preview-pdf", async (req, res) => {
     // Security: Do not expose error details to client
     res
       .status(500)
-      .json({ error: "Error creating PDF" })
+      .json({ error: "Error creating PDF preview" })
   } finally {
     if (page) {
       await page.close()
