@@ -1,6 +1,9 @@
 import { marked } from "marked"
+import { useState } from "react"
 
 const UploadButton = ({ onTextUpload }) => {
+  const [isLoading, setIsLoading] = useState(false)
+
   const handleImport = async () => {
     try {
       const opts = {
@@ -17,6 +20,7 @@ const UploadButton = ({ onTextUpload }) => {
       }
 
       const [fileHandle] = await window.showOpenFilePicker(opts)
+      setIsLoading(true)
       const file = await fileHandle.getFile()
       let fileContent = await file.text()
 
@@ -45,7 +49,11 @@ const UploadButton = ({ onTextUpload }) => {
         onTextUpload(fileContent, fileType)
       }
     } catch (error) {
-      console.error("Error importing file:", error)
+      if (error.name !== "AbortError") {
+        console.error("Error importing file:", error)
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -80,8 +88,10 @@ const UploadButton = ({ onTextUpload }) => {
         borderColor: "#26B9C8",
         color: "#FFFFFF",
       }}
+      disabled={isLoading}
+      aria-busy={isLoading}
     >
-      Upload Text
+      {isLoading ? "Importing..." : "Upload Text"}
     </button>
   )
 }

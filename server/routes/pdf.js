@@ -121,10 +121,11 @@ router.post("/export-pdf", async (req, res) => {
     const browser = await getBrowser()
     page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
-      waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
-      timeout: 30000,
-    })
+    try {
+      await page.setContent(sanitizedHtml, {
+        waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
+        timeout: 30000,
+      })
 
     await page.addStyleTag({ content: editorCss })
 
@@ -284,35 +285,39 @@ router.post("/generate-preview-pdf", async (req, res) => {
       `
 
     const browser = await getBrowser()
-    page = await browser.newPage()
+    const page = await browser.newPage()
 
-    await page.setContent(sanitizedHtml, {
-      waitUntil: "domcontentloaded", // Optimization
-      timeout: 30000,
-    })
+    try {
+      await page.setContent(sanitizedHtml, {
+        waitUntil: "domcontentloaded", // Optimization
+        timeout: 30000,
+      })
 
-    await page.addStyleTag({ content: editorCss })
-    await page.addStyleTag({ content: pdfSpecificStyles })
+      await page.addStyleTag({ content: editorCss })
+      await page.addStyleTag({ content: pdfSpecificStyles })
 
-    // Kurze Wartezeit, um sicherzustellen, dass Stile angewendet werden
-    // await new Promise((resolve) => setTimeout(resolve, 1000)) // Kann oft entfernt oder reduziert werden
+      // Kurze Wartezeit, um sicherzustellen, dass Stile angewendet werden
+      // await new Promise((resolve) => setTimeout(resolve, 1000)) // Kann oft entfernt oder reduziert werden
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20mm",
-        right: "20mm",
-        bottom: "20mm",
-        left: "20mm",
-      },
-      scale: 1, // Zurückgesetzt auf 1 für den Anfang
-      preferCSSPageSize: false, // Wichtig für korrekte A4-Anwendung mit Rändern
-      displayHeaderFooter: false,
-    })
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          right: "20mm",
+          bottom: "20mm",
+          left: "20mm",
+        },
+        scale: 1, // Zurückgesetzt auf 1 für den Anfang
+        preferCSSPageSize: false, // Wichtig für korrekte A4-Anwendung mit Rändern
+        displayHeaderFooter: false,
+      })
 
-    res.contentType("application/pdf")
-    res.send(pdfBuffer)
+      res.contentType("application/pdf")
+      res.send(pdfBuffer)
+    } finally {
+      await page.close()
+    }
   } catch (error) {
     console.error("--- PDF PREVIEW ERROR CAUGHT ---")
     console.error("Error Message:", error.message)
