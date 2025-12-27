@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { marked } from "marked"
 import { useState } from "react"
 
@@ -83,6 +84,8 @@ const UploadButton = ({ onTextUpload }) => {
       onClick={handleImport}
       type="button"
       className="btn me-3 mb-3"
+      disabled={isLoading}
+      aria-busy={isLoading}
       style={{
         backgroundColor: "#26B9C8",
         borderColor: "#26B9C8",
