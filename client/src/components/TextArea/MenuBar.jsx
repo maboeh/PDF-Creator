@@ -12,25 +12,96 @@ const MenuBar = ({ editor }) => {
           disabled={!editor.can().chain().focus().toggleBold().run()}
           className={editor.isActive("bold") ? "is-active" : ""}
           aria-pressed={editor.isActive("bold")}
+          title="Fett (Ctrl+B)"
         >
-          Bold
+          𝐁
         </button>
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
           disabled={!editor.can().chain().focus().toggleItalic().run()}
           className={editor.isActive("italic") ? "is-active" : ""}
           aria-pressed={editor.isActive("italic")}
+          title="Kursiv (Ctrl+I)"
         >
-          Italic
+          𝐼
         </button>
         <button
           onClick={() => editor.chain().focus().toggleStrike().run()}
           disabled={!editor.can().chain().focus().toggleStrike().run()}
           className={editor.isActive("strike") ? "is-active" : ""}
           aria-pressed={editor.isActive("strike")}
+          title="Durchgestrichen (Ctrl+Shift+S)"
         >
-          Strike
+          S̶
         </button>
+        <button
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          disabled={!editor.can().chain().focus().toggleUnderline().run()}
+          className={editor.isActive("underline") ? "is-active" : ""}
+          aria-pressed={editor.isActive("underline")}
+          title="Unterstrichen"
+        >
+          U̲
+        </button>
+        <span className="menu-separator">|</span>
+        <button
+          onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          className={editor.isActive({ textAlign: "left" }) ? "is-active" : ""}
+          title="Linksbündig"
+        >
+          ⬅
+        </button>
+        <button
+          onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          className={editor.isActive({ textAlign: "center" }) ? "is-active" : ""}
+          title="Zentriert"
+        >
+          ⬌
+        </button>
+        <button
+          onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          className={editor.isActive({ textAlign: "right" }) ? "is-active" : ""}
+          title="Rechtsbündig"
+        >
+          ➡
+        </button>
+        <span className="menu-separator">|</span>
+        <select
+          onChange={(e) => {
+            if (e.target.value) {
+              editor.chain().focus().setMark("textStyle", { fontFamily: e.target.value }).run()
+            }
+          }}
+          defaultValue=""
+          title="Schriftart"
+          style={{ marginRight: "4px" }}
+        >
+          <option value="" disabled>Schriftart</option>
+          <option value="Arial">Arial</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Verdana">Verdana</option>
+        </select>
+        <select
+          onChange={(e) => {
+            if (e.target.value) {
+              editor.chain().focus().setMark("textStyle", { fontSize: e.target.value }).run()
+            }
+          }}
+          defaultValue=""
+          title="Schriftgröße"
+        >
+          <option value="" disabled>Größe</option>
+          <option value="10px">10</option>
+          <option value="12px">12</option>
+          <option value="14px">14</option>
+          <option value="16px">16</option>
+          <option value="18px">18</option>
+          <option value="24px">24</option>
+          <option value="32px">32</option>
+        </select>
+        <span className="menu-separator">|</span>
         <button
           onClick={() => editor.chain().focus().toggleCode().run()}
           disabled={!editor.can().chain().focus().toggleCode().run()}

@@ -80,9 +80,16 @@ async function getBrowser() {
   }
 
   console.log("Launching new Puppeteer browser instance...")
+  
+  // Security: In Produktion Sandbox aktivieren, in Development deaktivieren
+  const isProd = process.env.NODE_ENV === "production"
+  const browserArgs = isProd
+    ? ["--disable-dev-shm-usage"]
+    : ["--no-sandbox", "--disable-setuid-sandbox"]
+  
   browserInstance = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: browserArgs,
   })
 
   // Ensure browser closes on process exit

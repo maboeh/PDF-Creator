@@ -1,19 +1,19 @@
 import { useState } from "react"
 import { API_ENDPOINTS } from "../../config/api"
+import { useToast } from "../Toast/Toast"
 
 const ExportButton = ({ content }) => {
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const toast = useToast()
 
   const handleExport = async () => {
     if (!content || content === "<p></p>") {
-      setError("Bitte fügen Sie zuerst Inhalt hinzu")
+      toast.error("Bitte fügen Sie zuerst Inhalt hinzu")
       return
     }
 
     try {
       setIsLoading(true)
-      setError(null)
 
       if (!window.showSaveFilePicker) {
         throw new Error("Browser unterstützt diese Funktion nicht")
@@ -53,36 +53,32 @@ const ExportButton = ({ content }) => {
       const writable = await file.createWritable()
       await writable.write(pdfBlob)
       await writable.close()
+
+      toast.success("PDF erfolgreich exportiert! ✓")
     } catch (err) {
       if (err.name === "AbortError") return
       console.error("Export error:", err)
-      setError(err.message || "Fehler beim Export")
+      toast.error(err.message || "Fehler beim Export")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="d-inline-block">
-      <button
-        className="btn mt-3 me-3"
-        style={{
-          backgroundColor: isLoading ? "#ccc" : "#26B9C8",
-          borderColor: isLoading ? "#ccc" : "#26B9C8",
-          color: "#FFFFFF",
-        }}
-        disabled={isLoading}
-        onClick={handleExport}
-      >
-        {isLoading ? "Exportiert..." : "Export PDF"}
-      </button>
-      {error && (
-        <div style={{ color: "#dc3545", fontSize: "12px", marginTop: "4px" }}>
-          {error}
-        </div>
-      )}
-    </div>
+    <button
+      className="btn mt-3 me-3"
+      style={{
+        backgroundColor: isLoading ? "#ccc" : "#26B9C8",
+        borderColor: isLoading ? "#ccc" : "#26B9C8",
+        color: "#FFFFFF",
+      }}
+      disabled={isLoading}
+      onClick={handleExport}
+    >
+      {isLoading ? "Exportiert..." : "PDF exportieren"}
+    </button>
   )
 }
 
 export default ExportButton
+
