@@ -3,6 +3,8 @@ const router = express.Router()
 const fs = require("fs")
 const path = require("path")
 const sanitizeHtml = require("sanitize-html")
+const { validateHtmlContent } = require("../middleware/validation")
+const { pdfLimiter, exportLimiter } = require("../middleware/rateLimiter")
 
 const sanitizeOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat([
@@ -106,7 +108,7 @@ async function getBrowser() {
   return browserInstance
 }
 
-router.post("/export-pdf", async (req, res) => {
+router.post("/export-pdf", exportLimiter, validateHtmlContent, async (req, res) => {
   console.log("--- PDF EXPORT ROUTE HIT ---")
   let page = null
   try {
@@ -121,11 +123,10 @@ router.post("/export-pdf", async (req, res) => {
     const browser = await getBrowser()
     page = await browser.newPage()
 
-    try {
-      await page.setContent(sanitizedHtml, {
-        waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
-        timeout: 30000,
-      })
+    await page.setContent(sanitizedHtml, {
+      waitUntil: "domcontentloaded", // Optimization: networkidle0 is too slow
+      timeout: 30000,
+    })
 
     await page.addStyleTag({ content: editorCss })
 
@@ -228,7 +229,7 @@ router.post("/export-pdf", async (req, res) => {
 })
 
 // Neue Route für die PDF-Vorschau Generierung
-router.post("/generate-preview-pdf", async (req, res) => {
+router.post("/generate-preview-pdf", pdfLimiter, validateHtmlContent, async (req, res) => {
   console.log("--- PDF PREVIEW ROUTE HIT ---")
   let page = null
   try {

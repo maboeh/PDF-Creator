@@ -1,18 +1,28 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import { fileURLToPath } from "url"
-import { dirname } from "path"
-import path from "path"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-pdf": ["react-pdf", "pdfjs-dist"],
+          "vendor-editor": ["@tiptap/core", "@tiptap/react", "@tiptap/starter-kit"],
+          "vendor-utils": ["dompurify", "marked"],
+        },
+      },
     },
+    chunkSizeWarningLimit: 350,
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test/setup.js"],
+    css: false,
+    include: ["src/**/*.{test,spec}.{js,jsx}"],
+    testTimeout: 10000,
+    pool: "forks",
   },
 })

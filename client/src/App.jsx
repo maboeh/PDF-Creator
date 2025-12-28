@@ -1,67 +1,93 @@
-import PDFPreview from "./components/PreviewArea/PDFPreview"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import HeaderArea from "./components/MainArea/HeaderArea"
 import Navigation from "./components/MainArea/Navigation"
 import EditorArea from "./components/TextArea/EditorArea"
 import PreviewAreaView from "./components/PreviewArea/PreviewAreaView"
+import ErrorBoundary from "./components/ErrorBoundary"
+import DraftRecoveryModal from "./components/DraftRecoveryModal"
+import { useAutoSave } from "./hooks/useAutoSave"
 
 function App() {
   const [content, setContent] = useState("")
   const [editorInstance, setEditorInstance] = useState(null)
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false)
+  const [pendingDraft, setPendingDraft] = useState(null)
 
-  const handleContentChange = ({ editor }) => {
+  const handleDraftFound = useCallback((draft) => {
+    setPendingDraft(draft)
+    setShowRecoveryModal(true)
+  }, [])
+
+  const { lastSaved, clearDraft } = useAutoSave(content, handleDraftFound)
+
+  const handleContentChange = useCallback(({ editor }) => {
     setContent(editor.getHTML())
-  }
-  const handleClearContent = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to start a new document? This will clear your current work."
-      )
-    ) {
+  }, [])
+
+  const handleClearContent = useCallback(() => {
+    if (window.confirm("Neues Dokument erstellen? Alle Änderungen werden gelöscht.")) {
       setContent("")
-      if (editorInstance && editorInstance.commands) {
+      clearDraft()
+      if (editorInstance?.commands) {
         editorInstance.commands.clearContent(true)
-      } else {
-        console.warn(
-          "Editor instance or commands not available when trying to clear content."
-        )
       }
     }
-  }
+  }, [editorInstance, clearDraft])
+
+  const handleRestoreDraft = useCallback(() => {
+    if (pendingDraft?.content && editorInstance?.commands) {
+      editorInstance.commands.setContent(pendingDraft.content)
+      setContent(pendingDraft.content)
+    }
+    setShowRecoveryModal(false)
+    setPendingDraft(null)
+  }, [pendingDraft, editorInstance])
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft()
+    setShowRecoveryModal(false)
+    setPendingDraft(null)
+  }, [clearDraft])
 
   return (
-    <>
-      {/* Vollbreite Navigationsleiste */}
+    <ErrorBoundary>
+      <DraftRecoveryModal
+        isOpen={showRecoveryModal}
+        lastSaved={pendingDraft?.timestamp}
+        onRestore={handleRestoreDraft}
+        onDiscard={handleDiscardDraft}
+      />
+
       <Navigation />
-      <div
-        className="container-fluid px-4"
-        style={{ backgroundColor: "#F5F5F5" }}
-      >
-        {/* Seitenheader bleibt über die volle Breite */}
-        <HeaderArea content={content} handleClearContent={handleClearContent} />
-        {/* Neue Zeile für die Zentrierung */}
+      <div className="container-fluid px-4" style={{ backgroundColor: "#F5F5F5" }}>
+        <HeaderArea
+          content={content}
+          handleClearContent={handleClearContent}
+          lastSaved={lastSaved}
+        />
+
         <div className="row justify-content-center">
-          {/* Neue Spalte, um die Breite zu begrenzen (ca. 83% auf lg-Screens) */}
           <div className="col-lg-10">
-            {/* Editor innerhalb der schmaleren Spalte */}
-            <EditorArea
-              content={content}
-              handleContentChange={handleContentChange}
-              editorInstance={editorInstance}
-              setEditorInstance={setEditorInstance}
-            />
-            {/* Vorschau-Zeile ebenfalls innerhalb der schmaleren Spalte */}
+            <ErrorBoundary>
+              <EditorArea
+                content={content}
+                handleContentChange={handleContentChange}
+                editorInstance={editorInstance}
+                setEditorInstance={setEditorInstance}
+              />
+            </ErrorBoundary>
+
             <div className="row">
               <div className="col-12">
-                <PreviewAreaView content={content} />
+                <ErrorBoundary>
+                  <PreviewAreaView content={content} />
+                </ErrorBoundary>
               </div>
             </div>
-          </div>{" "}
-          {/* Ende col-lg-10 */}
-        </div>{" "}
-        {/* Ende der zentrierenden Zeile */}
+          </div>
+        </div>
       </div>
-    </>
+    </ErrorBoundary>
   )
 }
 

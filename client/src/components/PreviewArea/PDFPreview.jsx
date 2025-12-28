@@ -4,6 +4,7 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css"
 import "react-pdf/dist/esm/Page/TextLayer.css"
 import "./../../styles/PDFPreview.css"
 import DOMPurify from "dompurify"
+import { API_ENDPOINTS } from "../../config/api"
 
 pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`
 
@@ -155,7 +156,7 @@ const PdfPreview = ({ content }) => {
 
     try {
       const response = await fetch(
-        "http://localhost:3000/api/generate-preview-pdf",
+        API_ENDPOINTS.GENERATE_PREVIEW,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -169,8 +170,8 @@ const PdfPreview = ({ content }) => {
           .catch(() => ({ message: "Fehler beim Abrufen des PDFs" }))
         throw new Error(
           errData.details ||
-            errData.message ||
-            `HTTP-Fehler: ${response.status}`
+          errData.message ||
+          `HTTP-Fehler: ${response.status}`
         )
       }
 

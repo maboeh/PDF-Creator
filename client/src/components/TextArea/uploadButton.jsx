@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { marked } from "marked"
-import { useState } from "react"
 
 const UploadButton = ({ onTextUpload }) => {
   const [isLoading, setIsLoading] = useState(false)
@@ -91,8 +90,6 @@ const UploadButton = ({ onTextUpload }) => {
         borderColor: "#26B9C8",
         color: "#FFFFFF",
       }}
-      disabled={isLoading}
-      aria-busy={isLoading}
     >
       {isLoading ? "Importing..." : "Upload Text"}
     </button>

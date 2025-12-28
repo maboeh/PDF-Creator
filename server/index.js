@@ -1,13 +1,16 @@
 const express = require("express")
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000
 const cors = require("cors")
 const pdfRoutes = require("./routes/pdf")
+const { generalLimiter } = require("./middleware/rateLimiter")
 
-// Middleware für JSON-Parsing
-app.use(express.json())
+// Middleware für JSON-Parsing mit Größenlimit
+app.use(express.json({ limit: "2mb" }))
 // Middleware für CORS
 app.use(cors())
+// Rate Limiting für alle Routen
+app.use(generalLimiter)
 
 app.get("/", (req, res) => {
   res.send("Express läuft! Startseite gefunden.")
